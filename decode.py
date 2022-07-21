@@ -5,16 +5,40 @@ import torch
 import argparse
 
 
-def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_model_names, max_len):
+def softmax(input, t=1.0):
+    ex = torch.exp(input/t)
+    sum = torch.sum(ex, axis=0)
+    return ex / sum
+
+
+def compute_sensitivity(user_models, model, current_text):
+    main_model_probs = torch.softmax(model(current_text).logits[-1,:].squeeze(), 0)
+
+    user_model_probs = []
+    for mod in user_models:
+        user_model_probs.append(torch.softmax(mod(current_text).logits[-1,:].squeeze(), 0))
+
+    deviance_scores = [torch.norm(main_model_probs-u_probs) for u_probs in user_model_probs]
+
+    print('deviance scores', deviance_scores)
+    print('deviance score', max(deviance_scores))
+
+    return max(deviance_scores)
+
+
+
+def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_models, max_len):
     current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['The'])).to('cuda:0')
 
     while (len(current_text) < max_len):
-        print(model(current_text).logits.shape)
-        main_scores = torch.softmax(model(current_text).logits[-1,:].squeeze(), 0)
+
+        sensitivity = compute_sensitivity(user_models, model, current_text)
+        temperature = 2*sensitivity
+        
+        print('temp', temperature)
+        main_scores = softmax(model(current_text).logits[-1,:].squeeze(), t=temperature)
         distribution = Categorical(main_scores)
         next_token = distribution.sample()
-        print(current_text.shape)
-        print(torch.LongTensor([next_token]).shape)
         current_text = torch.cat((current_text, torch.LongTensor([next_token]).to('cuda:0')), 0)
 
         if next_token == tokenizer.convert_tokens_to_ids('<|endoftext|>'):
@@ -50,7 +74,7 @@ def main(main_model_name: str, user_model_names: list, num_texts: int, max_token
     generated_texts = []
     for i in range(num_texts):
         print(i)
-        text, tokens = sample_text(tokenizer, model, user_model_names, max_token_len)
+        text, tokens = sample_text(tokenizer, model, user_models, max_token_len)
         generated_texts.append(text)
 
     write_to_file(generated_texts, out_file_name)
