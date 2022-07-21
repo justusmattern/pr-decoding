@@ -47,6 +47,7 @@ def main(main_model_name: str, user_model_names: list, num_texts: int, max_token
 
     generated_texts = []
     for i in range(num_texts):
+        print(i)
         generated_texts.append(sample_text(tokenizer, model, user_model_names, max_token_len))
 
     write_to_file(generated_texts, out_file_name)
@@ -63,5 +64,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    main(main_model_name=args.main_model, user_model_names=args.user_models, num_texts=args.num_texts, out_file_name=args.out_file_name)
+    main(main_model_name=args.main_model, user_model_names=args.user_models, num_texts=args.num_texts, max_token_len=args.max_token_len, out_file_name=args.out_file_name)
 
