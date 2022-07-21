@@ -9,11 +9,13 @@ def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_model_nam
     current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['The'])).to('cuda:0')
 
     while (len(current_text) < max_len):
-    
-        main_scores = torch.softmax(model(current_text).logits[:,-1,:].unsqueeze(), 0)
+        print(model(current_text).logits.shape)
+        main_scores = torch.softmax(model(current_text).logits[-1,:].squeeze(), 0)
         distribution = Categorical(main_scores)
         next_token = distribution.sample()
-        torch.cat(current_text, torch.LongTensor([next_token]))
+        print(current_text.shape)
+        print(torch.LongTensor([next_token]).shape)
+        current_text = torch.cat((current_text, torch.LongTensor([next_token]).to('cuda:0')), 0)
 
         if next_token == tokenizer.convert_tokens_to_ids('<|endoftext|>'):
             decoded_text = tokenizer.decode(current_text)
@@ -48,7 +50,8 @@ def main(main_model_name: str, user_model_names: list, num_texts: int, max_token
     generated_texts = []
     for i in range(num_texts):
         print(i)
-        generated_texts.append(sample_text(tokenizer, model, user_model_names, max_token_len))
+        text, tokens = sample_text(tokenizer, model, user_model_names, max_token_len)
+        generated_texts.append(text)
 
     write_to_file(generated_texts, out_file_name)
 
