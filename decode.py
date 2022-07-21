@@ -6,7 +6,7 @@ import argparse
 
 
 def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_model_names, max_len):
-    current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['The']))
+    current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['The'])).to('cuda:0')
 
     while (len(current_text) < max_len):
     
@@ -42,7 +42,7 @@ def init_user_models(names):
 
 def main(main_model_name: str, user_model_names: list, num_texts: int, max_token_len: int, out_file_name: str):
     tokenizer = GPT2Tokenizer.from_pretrained(main_model_name)
-    model = GPT2LMHeadModel.from_pretrained(main_model_name)
+    model = GPT2LMHeadModel.from_pretrained(main_model_name).to('cuda:0')
     user_models = init_user_models(user_model_names)
 
     generated_texts = []
