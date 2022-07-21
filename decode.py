@@ -2,10 +2,11 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from torch import nn
 from torch.distributions.categorical import Categorical
 import torch
+import argparse
 
 
 def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_model_names, max_len):
-    current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['<|startoftext|>']))
+    current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['The']))
 
     while (len(current_text) < max_len):
     
@@ -18,7 +19,7 @@ def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_model_nam
             decoded_text = tokenizer.decode(current_text)
             return decoded_text, current_text
     
-    
+
     decoded_text = tokenizer.decode(current_text)
         
     return decoded_text, current_text
@@ -49,3 +50,18 @@ def main(main_model_name: str, user_model_names: list, num_texts: int, max_token
         generated_texts.append(sample_text(tokenizer, model, user_model_names, max_token_len))
 
     write_to_file(generated_texts, out_file_name)
+
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--main-model', type=str, default='gpt2')
+    parser.add_argument('--user-models', type=str, nargs='+', default=['gpt2', 'gpt2'])
+    parser.add_argument('--num-texts', type=int, default=100)
+    parser.add_argument('--max-token-len', type=int, default=100)
+    parser.add_argument('--out-file-name', type=str, default='out.txt')
+
+    args = parser.parse_args()
+
+    main(main_model_name=args.main_model, user_model_names=args.user_models, num_texts=args.num_texts, out_file_name=args.out_file_name)
+
