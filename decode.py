@@ -6,8 +6,15 @@ import argparse
 
 
 def softmax(input, t=1.0):
+    if t == 0:
+        t = 1
+    print(t)
+    print('input', input)
     ex = torch.exp(input/t)
+    print('ex', ex)
     sum = torch.sum(ex, axis=0)
+    print('sum', sum)
+    print('ex / sum', ex/sum)
     return ex / sum
 
 
@@ -34,11 +41,16 @@ def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_models, m
 
         sensitivity = compute_sensitivity(user_models, model, current_text)
         temperature = 2*sensitivity
-        
-        print('temp', temperature)
-        main_scores = softmax(model(current_text).logits[-1,:].squeeze(), t=temperature)
-        distribution = Categorical(main_scores)
-        next_token = distribution.sample()
+        #print('pred temperature', temperature)
+        #print('temp', temperature)
+        logits = model(current_text).logits[-1,:].squeeze()
+        if temperature > 0:
+            main_scores = torch.softmax(logits/temperature, dim=0)
+            distribution = Categorical(main_scores)
+            next_token = distribution.sample()
+        else:
+            next_token = torch.argmax(logits, dim=0)
+
         current_text = torch.cat((current_text, torch.LongTensor([next_token]).to('cuda:0')), 0)
 
         if next_token == tokenizer.convert_tokens_to_ids('<|endoftext|>'):
@@ -54,13 +66,13 @@ def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_models, m
 def write_to_file(texts, file_name):
     with open(file_name, 'w') as f:
         for text in texts:
-            f.write(text+'\n')
+            f.write(text.replace('\n', ' ')+'\n')
 
 
 def init_user_models(names):
     user_models = []
     for name in names:
-        m = GPT2LMHeadModel.from_pretrained(name)
+        m = GPT2LMHeadModel.from_pretrained(name).to('cuda:0')
         user_models.append(m)
 
     return user_models
