@@ -33,13 +33,27 @@ def compute_sensitivity(user_models, model, current_text):
     return max(deviance_scores)
 
 
+def compute_sensitivity_conservative(user_models, model, current_text):
+    main_model_probs = torch.softmax(model(current_text).logits[-1,:].squeeze(), 0)
+
+    user_model_probs = []
+    for mod in user_models:
+        user_model_probs.append(torch.softmax(mod(current_text).logits[-1,:].squeeze(), 0))
+
+    deviance_scores = [torch.max(abs(main_model_probs-u_probs)) for u_probs in user_model_probs]
+
+    print('sensitivity', max(deviance_scores))
+
+    return max(deviance_scores)
+
+
 
 def sample_text(tokenizer: GPT2Tokenizer, model: GPT2LMHeadModel, user_models, max_len):
     current_text = torch.LongTensor(tokenizer.convert_tokens_to_ids(['The'])).to('cuda:0')
 
     while (len(current_text) < max_len):
 
-        sensitivity = compute_sensitivity(user_models, model, current_text)
+        sensitivity = compute_sensitivity_conservative(user_models, model, current_text)
         temperature = 2*sensitivity
         #print('pred temperature', temperature)
         #print('temp', temperature)
